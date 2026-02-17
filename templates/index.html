@@ -1,0 +1,2332 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lattice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root {
+      --bg: #f5efe6;
+      --surface: #f9f3ea;
+      --surface-alt: #f3e9dc;
+      --surface-hover: #ecdfcf;
+      --border: rgba(149, 114, 79, 0.2);
+      --border-hover: rgba(149, 114, 79, 0.32);
+      --text: #2e241d;
+      --text-secondary: #6d5641;
+      --text-muted: #9e7f63;
+      --accent: #c87924;
+      --accent-soft: rgba(200, 121, 36, 0.14);
+      --accent-glow: rgba(200, 121, 36, 0.22);
+      --success: #4f8f71;
+      --danger: #cf6d5e;
+      --running: #a8702a;
+      --panel-shadow-1: rgba(0, 0, 0, 0.03);
+      --panel-shadow-2: rgba(89, 66, 43, 0.06);
+      --panel-shadow-3: rgba(89, 66, 43, 0.08);
+      --chart-font: #3d2c1f;
+      --chart-title: #4d3828;
+      --chart-grid: rgba(74, 56, 40, 0.22);
+      --chart-axis-line: rgba(74, 56, 40, 0.34);
+      --chart-hover-bg: #efe2d4;
+      --chart-hover-border: rgba(74, 56, 40, 0.28);
+      --chart-hover-text: #2e241d;
+      --btn-primary-start: #d28636;
+      --btn-primary-end: #be6f1f;
+      --progress-start: #d9984f;
+      --progress-end: #c87924;
+      --scroll-thumb: rgba(149, 114, 79, 0.26);
+      --scroll-thumb-hover: rgba(149, 114, 79, 0.36);
+      --selection-bg: rgba(200, 121, 36, 0.22);
+    }
+
+    body[data-theme="dark"] {
+      --bg: #121417;
+      --surface: #1a1d22;
+      --surface-alt: #21262d;
+      --surface-hover: #2a313b;
+      --border: rgba(205, 160, 104, 0.24);
+      --border-hover: rgba(224, 181, 123, 0.38);
+      --text: #ece6dd;
+      --text-secondary: #d6c7b3;
+      --text-muted: #a8947c;
+      --accent: #d7a164;
+      --accent-soft: rgba(215, 161, 100, 0.2);
+      --accent-glow: rgba(215, 161, 100, 0.3);
+      --success: #74c49e;
+      --danger: #f09393;
+      --running: #e4b47a;
+      --panel-shadow-1: rgba(0, 0, 0, 0.34);
+      --panel-shadow-2: rgba(0, 0, 0, 0.3);
+      --panel-shadow-3: rgba(0, 0, 0, 0.24);
+      --chart-font: #d9c8b4;
+      --chart-title: #e5d4bf;
+      --chart-grid: rgba(215, 161, 100, 0.18);
+      --chart-axis-line: rgba(215, 161, 100, 0.28);
+      --chart-hover-bg: #2e251f;
+      --chart-hover-border: rgba(215, 161, 100, 0.4);
+      --chart-hover-text: #f1e8dc;
+      --btn-primary-start: #dfad74;
+      --btn-primary-end: #bf8446;
+      --progress-start: #e4bc8e;
+      --progress-end: #cf995d;
+      --scroll-thumb: rgba(215, 161, 100, 0.34);
+      --scroll-thumb-hover: rgba(215, 161, 100, 0.5);
+      --selection-bg: rgba(215, 161, 100, 0.3);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+
+    body {
+      font-family: "Manrope", -apple-system, system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection {
+      background: var(--selection-bg);
+      color: var(--text);
+    }
+
+    /* ── Layout ── */
+
+    .app-shell {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 8px;
+      padding: 10px;
+      min-height: 0;
+    }
+
+    .panel {
+      border-radius: 11px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow:
+        0 0 0 1px var(--panel-shadow-1),
+        0 2px 8px var(--panel-shadow-2),
+        0 8px 24px var(--panel-shadow-3);
+    }
+
+    /* ── Topbar ── */
+
+    .topbar {
+      padding: 18px 24px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .brand-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      margin: 0;
+      font-weight: 800;
+      font-size: 1.35rem;
+      letter-spacing: -0.04em;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand::before {
+      content: "";
+      display: inline-block;
+      width: 3px;
+      height: 1.15em;
+      background: var(--accent);
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      font-weight: 400;
+    }
+
+    /* ── Config ── */
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1.15fr 0.85fr 0.85fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .field label {
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .field input {
+      width: 100%;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.84rem;
+      padding: 10px 12px;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .field input::placeholder { color: var(--text-muted); }
+
+    .field input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+      min-width: 195px;
+    }
+
+    /* ── Buttons ── */
+
+    button {
+      border: 1px solid transparent;
+      border-radius: 7px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.8rem;
+      padding: 10px 16px;
+      transition: all 0.15s ease;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.35;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--btn-primary-start), var(--btn-primary-end));
+      color: #fff;
+      box-shadow:
+        0 1px 3px var(--accent-soft),
+        0 4px 14px var(--accent-glow);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      box-shadow:
+        0 1px 3px var(--accent-glow),
+        0 6px 20px var(--accent-glow);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border-color: var(--border-hover);
+      color: var(--text-secondary);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      border-color: var(--border-hover);
+      color: var(--text);
+      background: var(--surface-alt);
+    }
+
+    .btn-page {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text-muted);
+      padding: 5px 11px;
+      font-size: 0.72rem;
+      font-weight: 500;
+    }
+
+    .btn-page:hover:not(:disabled) {
+      color: var(--text-secondary);
+      border-color: var(--border-hover);
+      background: var(--surface-alt);
+    }
+
+    /* ── Scale Toggle ── */
+
+    .scale-toggle {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .scale-btn {
+      padding: 5px 10px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .scale-btn + .scale-btn {
+      border-left: 1px solid var(--border);
+    }
+
+    .scale-btn:hover:not(.active) {
+      color: var(--text-secondary);
+      background: var(--surface-alt);
+    }
+
+    .scale-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* ── Status ── */
+
+    #status {
+      margin: 0;
+      min-height: 1rem;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Workspace ── */
+
+    .workspace {
+      min-height: 0;
+      height: 100%;
+      display: grid;
+      grid-template-columns: minmax(270px, 320px) 1fr;
+      gap: 8px;
+    }
+
+    /* ── Runs Pane ── */
+
+    .runs-pane {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto auto auto minmax(0, 1fr);
+      gap: 10px;
+      padding: 16px;
+      background: var(--surface-alt);
+      overflow: hidden;
+    }
+
+    .pane-title {
+      margin: 0;
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .run-summary {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 0.8rem;
+      color: var(--text);
+      padding: 9px 12px;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-wrap input::placeholder { color: var(--text-muted); }
+
+    .search-wrap input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .group-filter {
+      display: grid;
+      gap: 6px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--surface);
+    }
+
+    .group-filter-head {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+    }
+
+    .group-filter-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text-secondary);
+      font-size: 0.7rem;
+      font-weight: 600;
+      user-select: none;
+    }
+
+    .group-filter-toggle span {
+      white-space: nowrap;
+    }
+
+    .group-filter-toggle input {
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .group-filter input {
+      width: 100%;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      font-size: 0.75rem;
+      color: var(--text);
+      padding: 7px 9px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      transition: border-color 0.2s, box-shadow 0.2s, opacity 0.2s;
+    }
+
+    .group-filter input::placeholder { color: var(--text-muted); }
+
+    .group-filter input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .group-filter input:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .run-groups {
+      min-height: 0;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: grid;
+      gap: 6px;
+      align-content: start;
+      padding-right: 4px;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+    }
+
+    /* ── Group Cards ── */
+
+    .group-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .group-card summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 12px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: var(--surface-alt);
+      border-bottom: 1px solid var(--border);
+      transition: color 0.15s;
+    }
+
+    .group-card summary:hover { color: var(--text); }
+    .group-card summary::-webkit-details-marker { display: none; }
+
+    .group-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .group-count {
+      border-radius: 100px;
+      padding: 2px 8px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.65rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .group-runs {
+      display: grid;
+      gap: 2px;
+      padding: 4px;
+    }
+
+    /* ── Run Items ── */
+
+    .run-item {
+      width: 100%;
+      border-radius: 6px;
+      border: none;
+      border-left: 2px solid transparent;
+      background: transparent;
+      text-align: left;
+      padding: 10px 12px;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .run-item:hover {
+      background: var(--surface-hover);
+    }
+
+    .run-item.active {
+      background: var(--accent-soft);
+      border-left-color: var(--accent);
+    }
+
+    .run-name {
+      margin: 0 0 4px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .run-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+
+    /* ── State Dots ── */
+
+    .state-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .state-dot::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #d4d4d8;
+      flex-shrink: 0;
+    }
+
+    .state-running { color: var(--running); }
+    .state-running::before {
+      background: var(--running);
+      box-shadow: 0 0 6px rgba(216, 139, 26, 0.3);
+    }
+
+    .state-finished { color: var(--success); }
+    .state-finished::before {
+      background: var(--success);
+      box-shadow: 0 0 6px rgba(91, 168, 122, 0.3);
+    }
+
+    .state-failed { color: var(--danger); }
+    .state-failed::before {
+      background: var(--danger);
+      box-shadow: 0 0 6px rgba(230, 107, 91, 0.3);
+    }
+
+    /* ── Charts Pane ── */
+
+    .charts-pane {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .charts-header {
+      display: grid;
+      gap: 8px;
+    }
+
+    .charts-title-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      flex-wrap: wrap;
+    }
+
+    #chartsTitle {
+      margin: 0;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    #selectedMeta {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+
+    .metric-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #metricPageLabel {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+
+    .metric-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .compare-toolbar {
+      display: grid;
+      gap: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: var(--surface);
+    }
+
+    .compare-toolbar[hidden] { display: none; }
+
+    .compare-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #compareSummary {
+      margin: 0;
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .compare-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .compare-runs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding-bottom: 2px;
+      overscroll-behavior-x: contain;
+      scrollbar-gutter: stable both-edges;
+    }
+
+    .compare-run-chip {
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      color: var(--text-secondary);
+      border-radius: 7px;
+      padding: 6px 10px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      max-width: 220px;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .compare-run-chip:hover:not(:disabled) {
+      border-color: var(--border-hover);
+      color: var(--text);
+      background: var(--surface-hover);
+    }
+
+    .compare-run-chip[data-hidden="true"] {
+      background: transparent;
+      border-style: dashed;
+      color: var(--text-muted);
+      opacity: 0.85;
+    }
+
+    .compare-run-chip.selected {
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 1px var(--accent-glow);
+    }
+
+    .compare-run-chip:disabled {
+      cursor: default;
+      opacity: 1;
+    }
+
+    .chip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      flex-shrink: 0;
+      background: var(--chip-color, var(--accent));
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
+    }
+
+    .chip-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── Progress ── */
+
+    .load-progress {
+      display: grid;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .load-progress[hidden] { display: none; }
+
+    .load-progress-track {
+      width: 100%;
+      height: 2px;
+      border-radius: 100px;
+      background: var(--accent-soft);
+      overflow: hidden;
+    }
+
+    .load-progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 100px;
+      background: linear-gradient(90deg, var(--progress-start), var(--progress-end));
+      transition: width 180ms ease;
+    }
+
+    .load-progress-text {
+      margin: 0;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Charts Content ── */
+
+    .charts-content {
+      min-height: 0;
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface-alt);
+      overflow: hidden;
+    }
+
+    .charts-grid {
+      height: 100%;
+      display: grid;
+      gap: 8px;
+      padding: 8px;
+    }
+
+    .layout-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+    .layout-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 1fr; }
+    .layout-3,
+    .layout-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+
+    /* ── Chart Cards ── */
+
+    .chart-card {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+    }
+
+    .chart-head {
+      margin: 0;
+      padding: 10px 14px;
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .plot-surface {
+      min-height: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── Empty States ── */
+
+    .empty-state {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 32px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .no-runs {
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px dashed rgba(0, 0, 0, 0.08);
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      text-align: center;
+    }
+
+    /* ── Scrollbar ── */
+
+    .run-groups::-webkit-scrollbar { width: 6px; }
+    .run-groups::-webkit-scrollbar-track { background: transparent; }
+    .run-groups::-webkit-scrollbar-thumb {
+      background: var(--scroll-thumb);
+      border-radius: 100px;
+    }
+    .run-groups::-webkit-scrollbar-thumb:hover {
+      background: var(--scroll-thumb-hover);
+    }
+
+    .compare-runs::-webkit-scrollbar { height: 6px; }
+    .compare-runs::-webkit-scrollbar-track { background: transparent; }
+    .compare-runs::-webkit-scrollbar-thumb {
+      background: var(--scroll-thumb);
+      border-radius: 100px;
+    }
+    .compare-runs::-webkit-scrollbar-thumb:hover {
+      background: var(--scroll-thumb-hover);
+    }
+
+    /* ── Plotly overrides ── */
+
+    .modebar-group { padding: 0 !important; }
+    .modebar-btn { padding: 3px 4px !important; }
+
+    /* ── Responsive ── */
+
+    @media (max-width: 1180px) {
+      .config-grid { grid-template-columns: 1fr 1fr; }
+      .actions { justify-content: flex-start; }
+    }
+
+    @media (max-width: 920px) {
+      body { overflow: auto; }
+      .app-shell { height: auto; min-height: 100vh; }
+      .workspace {
+        grid-template-columns: 1fr;
+        grid-template-rows: 44vh 56vh;
+      }
+      .layout-2,
+      .layout-3,
+      .layout-4 {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(auto-fit, minmax(180px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <section class="topbar panel">
+      <div class="brand-row">
+        <h1 class="brand">Lattice</h1>
+        <p class="subtitle">W&amp;B experiment explorer</p>
+      </div>
+
+      <div class="config-grid">
+        <div class="field">
+          <label for="apiKey">API key</label>
+          <input id="apiKey" type="password" placeholder="optional if already logged in">
+        </div>
+        <div class="field">
+          <label for="baseUrl">Base URL</label>
+          <input id="baseUrl" type="text" placeholder="https://api.wandb.ai">
+        </div>
+        <div class="field">
+          <label for="entity">Entity</label>
+          <input id="entity" type="text" placeholder="team-or-user">
+        </div>
+        <div class="field">
+          <label for="project">Project</label>
+          <input id="project" type="text" placeholder="project-name">
+        </div>
+        <div class="actions">
+          <button class="btn-secondary" id="themeBtn" type="button">Dark mode</button>
+          <button class="btn-secondary" id="saveBtn" type="button">Save</button>
+          <button class="btn-primary" id="loadRunsBtn" type="button">Load runs</button>
+        </div>
+      </div>
+
+      <p id="status">Ready.</p>
+    </section>
+
+    <section class="workspace">
+      <aside class="runs-pane panel">
+        <h2 class="pane-title">Runs</h2>
+        <p class="run-summary" id="runsCount">No runs loaded.</p>
+        <div class="search-wrap">
+          <input id="runSearch" type="text" placeholder="Search runs…">
+        </div>
+        <div class="group-filter">
+          <div class="group-filter-head">
+            <label class="group-filter-toggle" for="groupRegexEnabled">
+              <input id="groupRegexEnabled" type="checkbox" checked>
+              <span>Hide groups by regex</span>
+            </label>
+          </div>
+          <input id="groupRegexInput" type="text" value="Sweeps_*" placeholder="Sweeps_*">
+        </div>
+        <div class="run-groups" id="runGroups"></div>
+      </aside>
+
+      <section class="charts-pane panel">
+        <div class="charts-header">
+          <div class="charts-title-row">
+            <h2 id="chartsTitle">Select a run</h2>
+            <p id="selectedMeta"></p>
+          </div>
+          <div class="metric-controls">
+            <p id="metricPageLabel">Metrics page 0 / 0</p>
+            <div class="metric-actions">
+              <div class="scale-toggle" id="scaleToggle">
+                <button class="scale-btn active" data-mode="smart" type="button">Smart</button>
+                <button class="scale-btn" data-mode="full" type="button">Full</button>
+              </div>
+              <button class="btn-page" id="prevMetricsBtn" type="button" disabled>Prev</button>
+              <button class="btn-page" id="nextMetricsBtn" type="button" disabled>Next</button>
+            </div>
+          </div>
+          <div class="compare-toolbar" id="compareToolbar" hidden>
+            <div class="compare-head">
+              <p id="compareSummary">Comparing 0 / 0 runs</p>
+              <div class="compare-actions">
+                <button class="btn-page" id="focusSelectedBtn" type="button">Only selected</button>
+                <button class="btn-page" id="showTopRunsBtn" type="button">Show top 6</button>
+              </div>
+            </div>
+            <div class="compare-runs" id="compareRuns"></div>
+          </div>
+          <div class="load-progress" id="loadProgress" hidden>
+            <div class="load-progress-track">
+              <div class="load-progress-fill" id="loadProgressFill"></div>
+            </div>
+            <p class="load-progress-text" id="loadProgressText">Loading metrics\u2026</p>
+          </div>
+        </div>
+
+        <div class="charts-content">
+          <div class="charts-grid" id="chartsGrid"></div>
+          <div class="empty-state" id="chartsEmpty">Select a run to load charts.</div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const apiKeyEl = document.getElementById("apiKey");
+    const baseUrlEl = document.getElementById("baseUrl");
+    const entityEl = document.getElementById("entity");
+    const projectEl = document.getElementById("project");
+    const statusEl = document.getElementById("status");
+    const themeBtn = document.getElementById("themeBtn");
+
+    const runSearchEl = document.getElementById("runSearch");
+    const runGroupsEl = document.getElementById("runGroups");
+    const runsCountEl = document.getElementById("runsCount");
+    const groupRegexEnabledEl = document.getElementById("groupRegexEnabled");
+    const groupRegexInputEl = document.getElementById("groupRegexInput");
+
+    const chartsGridEl = document.getElementById("chartsGrid");
+    const chartsTitleEl = document.getElementById("chartsTitle");
+    const selectedMetaEl = document.getElementById("selectedMeta");
+    const chartsEmptyEl = document.getElementById("chartsEmpty");
+    const loadProgressEl = document.getElementById("loadProgress");
+    const loadProgressFillEl = document.getElementById("loadProgressFill");
+    const loadProgressTextEl = document.getElementById("loadProgressText");
+
+    const metricPageLabelEl = document.getElementById("metricPageLabel");
+    const prevMetricsBtn = document.getElementById("prevMetricsBtn");
+    const nextMetricsBtn = document.getElementById("nextMetricsBtn");
+    const scaleToggleEl = document.getElementById("scaleToggle");
+    const compareToolbarEl = document.getElementById("compareToolbar");
+    const compareSummaryEl = document.getElementById("compareSummary");
+    const compareRunsEl = document.getElementById("compareRuns");
+    const focusSelectedBtn = document.getElementById("focusSelectedBtn");
+    const showTopRunsBtn = document.getElementById("showTopRunsBtn");
+
+    const CHARTS_PER_PAGE = 4;
+    const PRELOAD_GROUP_RUNS = 6;
+    const MAX_RUNS_PER_GROUP = 100;
+    const PREFETCH_CONCURRENCY = 2;
+    const FETCH_RUNS_CONCURRENCY = 3;
+    const DEFAULT_VISIBLE_COMPARE_RUNS = 6;
+    const MAX_VISIBLE_COMPARE_RUNS = 10;
+    const METRIC_KEYS_LIMIT = 220;
+    const METRICS_PAGE_POINTS_LIMIT = 260;
+    const METRICS_PAGE_HISTORY_ROWS = 12000;
+    const METRIC_KEYS_TIME_BUDGET_S = 10;
+    const METRICS_PAGE_TIME_BUDGET_S = 35;
+    const METRIC_KEYS_TIMEOUT_MS = 25000;
+    const METRICS_PAGE_TIMEOUT_MS = 60000;
+    const THEME_STORAGE_KEY = "lattice.theme";
+    const GROUP_FILTER_ENABLED_STORAGE_KEY = "lattice.groupFilter.enabled";
+    const GROUP_FILTER_REGEX_STORAGE_KEY = "lattice.groupFilter.regex";
+    const DEFAULT_GROUP_EXCLUDE_REGEX = "Sweeps_*";
+    const GROUP_VISIBILITY_STORAGE_PREFIX = "lattice.groupVisibility.";
+
+    const CHART_CHIP_PALETTE = [
+      "#f4a7a7",
+      "#8fbaf7",
+      "#9fd7b5",
+      "#c8b0f4",
+      "#f5c88f",
+      "#8fdccf",
+      "#f3b2d7",
+      "#b9d39a",
+      "#a9c8f0",
+      "#f6b8a6",
+    ];
+
+    const CHART_LINE_PALETTE_LIGHT = [
+      "#8c3d3d",
+      "#365d96",
+      "#2f7456",
+      "#62439a",
+      "#8a5a26",
+      "#2f6f65",
+      "#8a4167",
+      "#4d7031",
+      "#385c7f",
+      "#91513f",
+    ];
+
+    const activePlotNodes = [];
+    const openGroups = new Map();
+    const runMetricKeysCache = new Map();
+    const runMetricSeriesCache = new Map();
+    const metricsInFlight = new Map();
+    const prefetchQueue = [];
+    const queuedPrefetchRunIds = new Set();
+    const hiddenRunIdsByGroup = new Map();
+
+    let allRuns = [];
+    let selectedRunId = null;
+    let selectedGroupKey = null;
+    let selectedGroupRuns = [];
+    let currentMetricKeys = [];
+    let metricPage = 0;
+    let activePrefetchWorkers = 0;
+    let loadProgressTimer = null;
+    let loadProgressValue = 0;
+    let currentLoadToken = 0;
+    let currentRenderToken = 0;
+    let scaleMode = "smart";
+    let themeMode = "light";
+    let groupRegexFilterEnabled = true;
+    let groupRegexFilterPattern = DEFAULT_GROUP_EXCLUDE_REGEX;
+    let groupRegexFilterCompiled = /^Sweeps_.*$/;
+    let currentProjectPath = "";
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.style.color = isError ? "var(--danger)" : "var(--text-muted)";
+    }
+
+    function readStoredTheme() {
+      try {
+        const saved = localStorage.getItem(THEME_STORAGE_KEY);
+        if (saved === "light" || saved === "dark") {
+          return saved;
+        }
+      } catch {}
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+
+    function getThemeVar(name, fallback) {
+      const value = getComputedStyle(document.body).getPropertyValue(name).trim();
+      return value || fallback;
+    }
+
+    function applyTheme(mode) {
+      themeMode = mode === "dark" ? "dark" : "light";
+      document.body.dataset.theme = themeMode;
+      themeBtn.textContent = themeMode === "dark" ? "Light mode" : "Dark mode";
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+      } catch {}
+    }
+
+    function groupVisibilityStorageKey() {
+      const path = String(currentProjectPath || "").trim().toLowerCase();
+      if (!path) {
+        return null;
+      }
+      return `${GROUP_VISIBILITY_STORAGE_PREFIX}${path}`;
+    }
+
+    function loadStoredGroupVisibilityState() {
+      openGroups.clear();
+      const key = groupVisibilityStorageKey();
+      if (!key) {
+        return;
+      }
+
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) {
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") {
+          return;
+        }
+        for (const [group, isOpen] of Object.entries(parsed)) {
+          openGroups.set(group, Boolean(isOpen));
+        }
+      } catch {}
+    }
+
+    function persistGroupVisibilityState() {
+      const key = groupVisibilityStorageKey();
+      if (!key) {
+        return;
+      }
+
+      try {
+        localStorage.setItem(key, JSON.stringify(Object.fromEntries(openGroups)));
+      } catch {}
+    }
+
+    function compileGroupRegexPattern(pattern) {
+      const raw = String(pattern || "").trim();
+      if (!raw) {
+        return { regex: null, error: null };
+      }
+
+      const globCandidate = raw.replace(/\*/g, "");
+      const looksLikeSimpleGlob = raw.includes("*") && !/[\\^$+?.()|[\]{}]/.test(globCandidate);
+      if (looksLikeSimpleGlob) {
+        const globLike = raw
+          .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+          .replace(/\*/g, ".*");
+        return { regex: new RegExp(`^${globLike}$`), error: null };
+      }
+
+      try {
+        return { regex: new RegExp(raw), error: null };
+      } catch (error) {
+        if (raw.includes("*")) {
+          try {
+            const globLike = raw
+              .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+              .replace(/\*/g, ".*");
+            return { regex: new RegExp(`^${globLike}$`), error: null };
+          } catch {}
+        }
+        return { regex: null, error };
+      }
+    }
+
+    function persistGroupRegexFilterSettings() {
+      try {
+        localStorage.setItem(GROUP_FILTER_ENABLED_STORAGE_KEY, groupRegexFilterEnabled ? "1" : "0");
+        localStorage.setItem(GROUP_FILTER_REGEX_STORAGE_KEY, groupRegexFilterPattern);
+      } catch {}
+    }
+
+    function setGroupRegexFilterUiState(invalid = false) {
+      groupRegexEnabledEl.checked = groupRegexFilterEnabled;
+      groupRegexInputEl.disabled = !groupRegexFilterEnabled;
+      groupRegexInputEl.style.borderColor = invalid ? "var(--danger)" : "";
+      groupRegexInputEl.title = invalid ? "Invalid regex pattern" : "";
+    }
+
+    function syncGroupRegexFilterFromUi(options = {}) {
+      const { announceInvalid = false } = options;
+      groupRegexFilterEnabled = Boolean(groupRegexEnabledEl.checked);
+      const rawValue = String(groupRegexInputEl.value || "").trim();
+      groupRegexFilterPattern = rawValue || DEFAULT_GROUP_EXCLUDE_REGEX;
+      if (!rawValue) {
+        groupRegexInputEl.value = groupRegexFilterPattern;
+      }
+
+      const { regex, error } = groupRegexFilterEnabled
+        ? compileGroupRegexPattern(groupRegexFilterPattern)
+        : { regex: null, error: null };
+
+      groupRegexFilterCompiled = regex;
+      setGroupRegexFilterUiState(Boolean(error) && groupRegexFilterEnabled);
+      persistGroupRegexFilterSettings();
+
+      if (announceInvalid && error) {
+        setStatus(`Invalid group regex "${groupRegexFilterPattern}".`, true);
+      }
+    }
+
+    function loadStoredGroupRegexFilterSettings() {
+      try {
+        const savedEnabled = localStorage.getItem(GROUP_FILTER_ENABLED_STORAGE_KEY);
+        if (savedEnabled === "0") {
+          groupRegexFilterEnabled = false;
+        } else if (savedEnabled === "1") {
+          groupRegexFilterEnabled = true;
+        }
+
+        const savedPattern = localStorage.getItem(GROUP_FILTER_REGEX_STORAGE_KEY);
+        if (savedPattern && savedPattern.trim()) {
+          groupRegexFilterPattern = savedPattern.trim();
+        }
+      } catch {}
+
+      groupRegexEnabledEl.checked = groupRegexFilterEnabled;
+      groupRegexInputEl.value = groupRegexFilterPattern;
+      setGroupRegexFilterUiState(false);
+      syncGroupRegexFilterFromUi();
+    }
+
+    function hideLoadProgress() {
+      if (loadProgressTimer) {
+        clearInterval(loadProgressTimer);
+        loadProgressTimer = null;
+      }
+      loadProgressValue = 0;
+      loadProgressEl.hidden = true;
+      loadProgressFillEl.style.width = "0%";
+    }
+
+    function startLoadProgress(message, startPercent = 8, ceiling = 92) {
+      if (loadProgressTimer) {
+        clearInterval(loadProgressTimer);
+      }
+      loadProgressValue = Math.max(0, Math.min(ceiling, startPercent));
+      loadProgressFillEl.style.width = `${loadProgressValue}%`;
+      loadProgressTextEl.textContent = message;
+      loadProgressEl.hidden = false;
+
+      loadProgressTimer = setInterval(() => {
+        const delta = Math.max(0.45, (ceiling - loadProgressValue) * 0.08);
+        loadProgressValue = Math.min(ceiling, loadProgressValue + delta);
+        loadProgressFillEl.style.width = `${loadProgressValue}%`;
+      }, 180);
+    }
+
+    function completeLoadProgress() {
+      if (loadProgressTimer) {
+        clearInterval(loadProgressTimer);
+        loadProgressTimer = null;
+      }
+      loadProgressValue = 100;
+      loadProgressFillEl.style.width = "100%";
+      setTimeout(() => {
+        if (loadProgressValue >= 100) {
+          hideLoadProgress();
+        }
+      }, 220);
+    }
+
+    function toLocalDate(raw) {
+      if (!raw) return "-";
+      const dt = new Date(raw);
+      if (Number.isNaN(dt.getTime())) return raw;
+      return dt.toLocaleString();
+    }
+
+    function normalizeGroup(group) {
+      const text = String(group || "").trim();
+      return text ? text : "ungrouped";
+    }
+
+    function runLabel(run) {
+      return run?.name || run?.id || "run";
+    }
+
+    function metricCountLabel(run) {
+      return `${run.numeric_metric_count || 0}m`;
+    }
+
+    function stateClass(state) {
+      const text = String(state || "").toLowerCase();
+      if (text.includes("running")) return "state-running";
+      if (text.includes("finish") || text.includes("complete")) return "state-finished";
+      if (text.includes("fail") || text.includes("crash") || text.includes("kill")) return "state-failed";
+      return "";
+    }
+
+    function colorForRunIndex(index) {
+      return CHART_CHIP_PALETTE[index % CHART_CHIP_PALETTE.length];
+    }
+
+    function colorForRunLine(runId) {
+      const idx = selectedGroupRuns.findIndex((run) => run.id === runId);
+      const safeIdx = Math.max(0, idx);
+      if (themeMode === "light") {
+        return CHART_LINE_PALETTE_LIGHT[safeIdx % CHART_LINE_PALETTE_LIGHT.length];
+      }
+      return colorForRunIndex(safeIdx);
+    }
+
+    async function fetchJson(url, options = {}) {
+      const { timeoutMs = 0, ...fetchOptions } = options;
+      let timeoutId = null;
+      let controller = null;
+
+      if (timeoutMs > 0) {
+        controller = new AbortController();
+        fetchOptions.signal = controller.signal;
+        timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      }
+
+      let res;
+      try {
+        res = await fetch(url, fetchOptions);
+      } catch (err) {
+        if (err && err.name === "AbortError") {
+          const seconds = Math.max(1, Math.round(timeoutMs / 1000));
+          const timeoutError = new Error(`Request timed out after ${seconds}s`);
+          timeoutError.code = "ETIMEDOUT";
+          throw timeoutError;
+        }
+        throw err;
+      } finally {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      }
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
+      if (!res.ok) {
+        throw new Error(data.error || `Request failed (${res.status})`);
+      }
+      return data;
+    }
+
+    function getRunSeriesCache(runId) {
+      if (!runMetricSeriesCache.has(runId)) {
+        runMetricSeriesCache.set(runId, new Map());
+      }
+      return runMetricSeriesCache.get(runId);
+    }
+
+    function buildMetricKeysUrl(runId) {
+      const qs = new URLSearchParams();
+      qs.set("limit", String(METRIC_KEYS_LIMIT));
+      qs.set("time_budget_s", String(METRIC_KEYS_TIME_BUDGET_S));
+      return `/api/runs/${encodeURIComponent(runId)}/metric_keys?${qs.toString()}`;
+    }
+
+    function buildMetricsUrl(runId, metricKeys) {
+      const qs = new URLSearchParams();
+      qs.set("points_limit", String(METRICS_PAGE_POINTS_LIMIT));
+      qs.set("history_rows", String(METRICS_PAGE_HISTORY_ROWS));
+      qs.set("time_budget_s", String(METRICS_PAGE_TIME_BUDGET_S));
+      metricKeys.forEach((metric) => qs.append("key", metric));
+      return `/api/runs/${encodeURIComponent(runId)}/metrics?${qs.toString()}`;
+    }
+
+    async function fetchRunMetricKeys(runId) {
+      const cached = runMetricKeysCache.get(runId);
+      if (cached) {
+        return cached;
+      }
+
+      const inflightKey = `keys:${runId}`;
+      if (metricsInFlight.has(inflightKey)) {
+        return metricsInFlight.get(inflightKey);
+      }
+
+      const promise = (async () => {
+        const data = await fetchJson(buildMetricKeysUrl(runId), { timeoutMs: METRIC_KEYS_TIMEOUT_MS });
+        const incoming = {
+          metrics: data.metrics || [],
+          partial: Boolean(data.partial),
+          timedOut: Boolean(data.timed_out),
+          meta: data.meta || {},
+        };
+        runMetricKeysCache.set(runId, incoming);
+        return incoming;
+      })().finally(() => {
+        metricsInFlight.delete(inflightKey);
+      });
+
+      metricsInFlight.set(inflightKey, promise);
+      return promise;
+    }
+
+    async function fetchMetricsForKeys(runId, metricKeys) {
+      if (!metricKeys.length) {
+        return { charts: [], partial: false, timedOut: false, meta: {} };
+      }
+
+      const runSeries = getRunSeriesCache(runId);
+      const missing = metricKeys.filter((metric) => !runSeries.has(metric));
+      if (!missing.length) {
+        return {
+          charts: metricKeys.map((metric) => ({ metric, points: runSeries.get(metric) || [] })),
+          partial: false,
+          timedOut: false,
+          meta: { from_cache: true },
+        };
+      }
+
+      const inflightKey = `series:${runId}:${missing.join("\u0001")}`;
+      let data;
+      if (metricsInFlight.has(inflightKey)) {
+        data = await metricsInFlight.get(inflightKey);
+      } else {
+        const promise = fetchJson(buildMetricsUrl(runId, missing), { timeoutMs: METRICS_PAGE_TIMEOUT_MS })
+          .finally(() => {
+            metricsInFlight.delete(inflightKey);
+          });
+        metricsInFlight.set(inflightKey, promise);
+        data = await promise;
+      }
+
+      const pointsByMetric = new Map((data.charts || []).map((chart) => [chart.metric, chart.points || []]));
+      for (const metric of missing) {
+        runSeries.set(metric, pointsByMetric.get(metric) || []);
+      }
+
+      return {
+        charts: metricKeys.map((metric) => ({ metric, points: runSeries.get(metric) || [] })),
+        partial: Boolean(data.partial),
+        timedOut: Boolean(data.timed_out),
+        meta: data.meta || {},
+      };
+    }
+
+    async function prefetchRunFirstPage(runId) {
+      const keysData = await fetchRunMetricKeys(runId);
+      const pageKeys = (keysData.metrics || []).slice(0, CHARTS_PER_PAGE);
+      if (!pageKeys.length) {
+        return;
+      }
+      await fetchMetricsForKeys(runId, pageKeys);
+    }
+
+    function drainPrefetchQueue() {
+      while (activePrefetchWorkers < PREFETCH_CONCURRENCY && prefetchQueue.length > 0) {
+        const runId = prefetchQueue.shift();
+        queuedPrefetchRunIds.delete(runId);
+        activePrefetchWorkers += 1;
+
+        prefetchRunFirstPage(runId)
+          .catch(() => {})
+          .finally(() => {
+            activePrefetchWorkers -= 1;
+            drainPrefetchQueue();
+          });
+      }
+    }
+
+    function queuePrefetchRun(run) {
+      const runId = run?.id;
+      if (!runId || queuedPrefetchRunIds.has(runId)) {
+        return;
+      }
+
+      const cachedKeys = runMetricKeysCache.get(runId);
+      if (cachedKeys?.metrics?.length) {
+        const firstPage = cachedKeys.metrics.slice(0, CHARTS_PER_PAGE);
+        const runSeries = runMetricSeriesCache.get(runId);
+        const hasFirstPage = runSeries && firstPage.every((metric) => runSeries.has(metric));
+        if (hasFirstPage) {
+          return;
+        }
+      }
+
+      queuedPrefetchRunIds.add(runId);
+      prefetchQueue.push(runId);
+      drainPrefetchQueue();
+    }
+
+    function prefetchGroupRuns(runs) {
+      for (const run of runs.slice(0, PRELOAD_GROUP_RUNS)) {
+        queuePrefetchRun(run);
+      }
+    }
+
+    function groupRuns(runs, query) {
+      const trimmedQuery = query.trim().toLowerCase();
+      const grouped = new Map();
+
+      for (const run of runs) {
+        if (trimmedQuery) {
+          const haystack = [run.id, run.name, run.group, run.state].map((x) => String(x || "").toLowerCase()).join(" ");
+          if (!haystack.includes(trimmedQuery)) {
+            continue;
+          }
+        }
+
+        const group = normalizeGroup(run.group);
+        if (!grouped.has(group)) {
+          grouped.set(group, []);
+        }
+        const groupRuns = grouped.get(group);
+        if (groupRuns.length < MAX_RUNS_PER_GROUP) {
+          groupRuns.push(run);
+        }
+      }
+
+      const sortedGroups = Array.from(grouped.entries()).sort((a, b) => {
+        if (b[1].length !== a[1].length) {
+          return b[1].length - a[1].length;
+        }
+        return a[0].localeCompare(b[0]);
+      });
+
+      if (!groupRegexFilterEnabled || !groupRegexFilterCompiled) {
+        return sortedGroups;
+      }
+
+      return sortedGroups.filter(([group]) => !groupRegexFilterCompiled.test(group));
+    }
+
+    function getRunsForGroup(groupKey) {
+      return allRuns.filter((run) => normalizeGroup(run.group) === groupKey);
+    }
+
+    function getHiddenSetForGroup(groupKey) {
+      if (!hiddenRunIdsByGroup.has(groupKey)) {
+        hiddenRunIdsByGroup.set(groupKey, new Set());
+      }
+      return hiddenRunIdsByGroup.get(groupKey);
+    }
+
+    function initializeGroupVisibility(groupKey, runs, pinnedRunId) {
+      const hidden = getHiddenSetForGroup(groupKey);
+      const runIds = new Set(runs.map((run) => run.id));
+
+      for (const hiddenId of Array.from(hidden)) {
+        if (!runIds.has(hiddenId)) {
+          hidden.delete(hiddenId);
+        }
+      }
+
+      if (hidden.size === 0) {
+        const targetVisible = Math.min(DEFAULT_VISIBLE_COMPARE_RUNS, MAX_VISIBLE_COMPARE_RUNS, runs.length);
+        let remainingSlots = Math.max(0, targetVisible - 1);
+        for (const run of runs) {
+          if (run.id === pinnedRunId) {
+            continue;
+          }
+          if (remainingSlots > 0) {
+            remainingSlots -= 1;
+          } else {
+            hidden.add(run.id);
+          }
+        }
+      }
+
+      hidden.delete(pinnedRunId);
+      while (runs.length - hidden.size > MAX_VISIBLE_COMPARE_RUNS) {
+        const candidate = runs.find((run) => run.id !== pinnedRunId && !hidden.has(run.id));
+        if (!candidate) {
+          break;
+        }
+        hidden.add(candidate.id);
+      }
+    }
+
+    function getVisibleRunsForSelectedGroup() {
+      if (!selectedGroupKey || !selectedGroupRuns.length) {
+        return [];
+      }
+      const hidden = getHiddenSetForGroup(selectedGroupKey);
+      const visible = selectedGroupRuns.filter((run) => !hidden.has(run.id));
+      if (!visible.length) {
+        const selectedRun = selectedGroupRuns.find((run) => run.id === selectedRunId);
+        if (selectedRun) {
+          return [selectedRun];
+        }
+      }
+      return visible;
+    }
+
+    function renderCompareToolbar() {
+      if (!selectedRunId || !selectedGroupKey || !selectedGroupRuns.length) {
+        compareToolbarEl.hidden = true;
+        compareSummaryEl.textContent = "Comparing 0 / 0 runs";
+        compareRunsEl.innerHTML = "";
+        return;
+      }
+
+      const hidden = getHiddenSetForGroup(selectedGroupKey);
+      const visibleCount = selectedGroupRuns.length - hidden.size;
+      compareToolbarEl.hidden = false;
+      compareSummaryEl.textContent = `Comparing ${visibleCount} / ${selectedGroupRuns.length} runs in ${selectedGroupKey}`;
+      showTopRunsBtn.textContent = `Show top ${DEFAULT_VISIBLE_COMPARE_RUNS}`;
+      compareRunsEl.innerHTML = "";
+
+      selectedGroupRuns.forEach((run, idx) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = `compare-run-chip${run.id === selectedRunId ? " selected" : ""}`;
+        chip.dataset.hidden = hidden.has(run.id) ? "true" : "false";
+        chip.style.setProperty("--chip-color", colorForRunIndex(idx));
+
+        if (run.id === selectedRunId) {
+          chip.disabled = true;
+          chip.title = "Selected run is always visible";
+        } else {
+          chip.title = hidden.has(run.id) ? "Click to show this run" : "Click to hide this run";
+          chip.addEventListener("click", async () => {
+            await toggleRunVisibility(run);
+          });
+        }
+
+        const dot = document.createElement("span");
+        dot.className = "chip-dot";
+        const label = document.createElement("span");
+        label.className = "chip-label";
+        if (run.id === selectedRunId) {
+          label.textContent = `${runLabel(run)} (selected)`;
+        } else if (hidden.has(run.id)) {
+          label.textContent = `${runLabel(run)} (hidden)`;
+        } else {
+          label.textContent = runLabel(run);
+        }
+
+        chip.appendChild(dot);
+        chip.appendChild(label);
+        compareRunsEl.appendChild(chip);
+      });
+    }
+
+    async function toggleRunVisibility(run) {
+      if (!selectedGroupKey || !run || run.id === selectedRunId) {
+        return;
+      }
+
+      const hidden = getHiddenSetForGroup(selectedGroupKey);
+      const currentlyHidden = hidden.has(run.id);
+      const visibleCount = selectedGroupRuns.length - hidden.size;
+
+      if (currentlyHidden) {
+        if (visibleCount >= MAX_VISIBLE_COMPARE_RUNS) {
+          setStatus(`Showing max ${MAX_VISIBLE_COMPARE_RUNS} runs for responsiveness. Hide one first.`);
+          return;
+        }
+        hidden.delete(run.id);
+        const start = metricPage * CHARTS_PER_PAGE;
+        const pageMetrics = currentMetricKeys.slice(start, start + CHARTS_PER_PAGE);
+        if (pageMetrics.length) {
+          fetchMetricsForKeys(run.id, pageMetrics).catch(() => {});
+        }
+      } else {
+        hidden.add(run.id);
+      }
+
+      renderCompareToolbar();
+      await renderMetricPage();
+    }
+
+    async function showOnlySelectedRun() {
+      if (!selectedGroupKey || !selectedRunId) return;
+      const hidden = getHiddenSetForGroup(selectedGroupKey);
+      hidden.clear();
+      for (const run of selectedGroupRuns) {
+        if (run.id !== selectedRunId) {
+          hidden.add(run.id);
+        }
+      }
+      renderCompareToolbar();
+      await renderMetricPage();
+    }
+
+    async function showTopRunsForCompare(limit = DEFAULT_VISIBLE_COMPARE_RUNS) {
+      if (!selectedGroupKey || !selectedRunId) return;
+      const targetVisible = Math.min(Math.max(1, limit), MAX_VISIBLE_COMPARE_RUNS);
+      const hidden = getHiddenSetForGroup(selectedGroupKey);
+      hidden.clear();
+
+      let remainingSlots = Math.max(0, targetVisible - 1);
+      for (const run of selectedGroupRuns) {
+        if (run.id === selectedRunId) {
+          continue;
+        }
+        if (remainingSlots > 0) {
+          remainingSlots -= 1;
+        } else {
+          hidden.add(run.id);
+        }
+      }
+
+      renderCompareToolbar();
+      await renderMetricPage();
+    }
+
+    function renderRunGroups() {
+      runGroupsEl.innerHTML = "";
+      const groups = groupRuns(allRuns, runSearchEl.value || "");
+      if (groups.length === 0) {
+        runGroupsEl.innerHTML = '<div class="no-runs">No runs match search/filter.</div>';
+        return;
+      }
+
+      groups.forEach(([group, runs], idx) => {
+        const details = document.createElement("details");
+        details.className = "group-card";
+
+        const shouldAutoOpen = (runSearchEl.value || "").trim() ? true : idx < 3;
+        const hasStoredState = openGroups.has(group);
+        details.open = hasStoredState ? Boolean(openGroups.get(group)) : shouldAutoOpen;
+        if (!hasStoredState) {
+          openGroups.set(group, details.open);
+        }
+
+        details.addEventListener("toggle", () => {
+          openGroups.set(group, details.open);
+          persistGroupVisibilityState();
+          if (details.open) {
+            prefetchGroupRuns(runs);
+          }
+        });
+
+        if (details.open) {
+          prefetchGroupRuns(runs);
+        }
+
+        const summary = document.createElement("summary");
+        summary.innerHTML = `
+          <span class="group-name">${group}</span>
+          <span class="group-count">${runs.length}</span>
+        `;
+        details.appendChild(summary);
+
+        const list = document.createElement("div");
+        list.className = "group-runs";
+
+        for (const run of runs) {
+          const item = document.createElement("button");
+          item.type = "button";
+          item.className = `run-item ${run.id === selectedRunId ? "active" : ""}`;
+          item.innerHTML = `
+            <p class="run-name">${runLabel(run)}</p>
+            <div class="run-meta">
+              <span class="state-dot ${stateClass(run.state)}">${run.state || "unknown"}</span>
+              <span>${toLocalDate(run.created_at)}</span>
+              <span>${metricCountLabel(run)}</span>
+            </div>
+          `;
+          item.addEventListener("click", () => loadRunCharts(run));
+          item.addEventListener("mouseenter", () => queuePrefetchRun(run));
+          list.appendChild(item);
+        }
+
+        details.appendChild(list);
+        runGroupsEl.appendChild(details);
+      });
+    }
+
+    function clearCharts() {
+      while (activePlotNodes.length) {
+        const node = activePlotNodes.pop();
+        Plotly.purge(node);
+      }
+      chartsGridEl.innerHTML = "";
+      chartsGridEl.className = "charts-grid";
+    }
+
+    function showChartsEmpty(message) {
+      chartsEmptyEl.style.display = "grid";
+      chartsEmptyEl.textContent = message;
+    }
+
+    function hideChartsEmpty() {
+      chartsEmptyEl.style.display = "none";
+    }
+
+    function layoutClassForCount(count) {
+      if (count <= 1) return "layout-1";
+      if (count === 2) return "layout-2";
+      if (count === 3) return "layout-3";
+      return "layout-4";
+    }
+
+    function updateMetricPager() {
+      const total = currentMetricKeys.length;
+      const totalPages = total ? Math.ceil(total / CHARTS_PER_PAGE) : 0;
+      const start = total ? metricPage * CHARTS_PER_PAGE + 1 : 0;
+      const end = total ? Math.min((metricPage + 1) * CHARTS_PER_PAGE, total) : 0;
+      const visibleRuns = getVisibleRunsForSelectedGroup();
+
+      metricPageLabelEl.textContent = `Metrics ${start}-${end} of ${total}  ·  page ${totalPages ? metricPage + 1 : 0}/${totalPages}  ·  ${visibleRuns.length} run(s)`;
+      prevMetricsBtn.disabled = metricPage <= 0;
+      nextMetricsBtn.disabled = metricPage >= totalPages - 1 || totalPages === 0;
+    }
+
+    function computeMedian(values) {
+      if (!values.length) return null;
+      const sorted = [...values].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+
+    function yAxisRangeMedianCapped(allYValues) {
+      const ys = allYValues.filter((v) => Number.isFinite(v));
+      if (ys.length < 6) {
+        return null;
+      }
+      const median = computeMedian(ys);
+      if (!Number.isFinite(median) || median <= 0) {
+        return null;
+      }
+      const rawMin = Math.min(...ys);
+      const rawMax = Math.max(...ys);
+      const capMax = median * 1.5;
+      if (rawMax <= capMax) {
+        return null;
+      }
+      const span = Math.max(capMax - rawMin, 1e-9);
+      const pad = span * 0.04;
+      return [rawMin - pad, capMax + pad];
+    }
+
+    async function fetchMetricsForRuns(runs, metricKeys, onProgress) {
+      if (!runs.length || !metricKeys.length) {
+        return [];
+      }
+
+      const results = new Array(runs.length);
+      let cursor = 0;
+      let completed = 0;
+      const workerCount = Math.min(FETCH_RUNS_CONCURRENCY, runs.length);
+
+      async function worker() {
+        while (true) {
+          const idx = cursor;
+          cursor += 1;
+          if (idx >= runs.length) {
+            break;
+          }
+          const run = runs[idx];
+          try {
+            const data = await fetchMetricsForKeys(run.id, metricKeys);
+            results[idx] = { run, data };
+          } catch (error) {
+            results[idx] = { run, error };
+          } finally {
+            completed += 1;
+            if (onProgress) {
+              onProgress(completed, runs.length, run);
+            }
+          }
+        }
+      }
+
+      await Promise.all(Array.from({ length: workerCount }, () => worker()));
+      return results;
+    }
+
+    function prefetchAdjacentMetricPage(page) {
+      const start = page * CHARTS_PER_PAGE;
+      const nextKeys = currentMetricKeys.slice(start, start + CHARTS_PER_PAGE);
+      if (!nextKeys.length) {
+        return;
+      }
+
+      const visibleRuns = getVisibleRunsForSelectedGroup();
+      for (const run of visibleRuns) {
+        fetchMetricsForKeys(run.id, nextKeys).catch(() => {});
+      }
+    }
+
+    function createPlot(metric, runs) {
+      const card = document.createElement("article");
+      card.className = "chart-card";
+
+      const title = document.createElement("h3");
+      title.className = "chart-head";
+      title.textContent = metric;
+      card.appendChild(title);
+
+      const surface = document.createElement("div");
+      surface.className = "plot-surface";
+      card.appendChild(surface);
+      chartsGridEl.appendChild(card);
+
+      const traces = [];
+      const yValues = [];
+      runs.forEach((run, traceIdx) => {
+        const points = getRunSeriesCache(run.id).get(metric) || [];
+        if (!points.length) {
+          return;
+        }
+        const x = points.map((pt) => pt.x);
+        const y = points.map((pt) => pt.y);
+        yValues.push(...y.filter((v) => Number.isFinite(v)));
+        const dash = run.id === selectedRunId
+          ? "solid"
+          : ["dash", "dot", "dashdot", "longdash", "longdashdot"][traceIdx % 5];
+        traces.push({
+          x,
+          y,
+          mode: "lines",
+          type: "scatter",
+          name: runLabel(run),
+          line: {
+            color: colorForRunLine(run.id),
+            width: run.id === selectedRunId ? 2.6 : 2.0,
+            dash,
+            shape: "linear",
+          },
+          opacity: run.id === selectedRunId ? 1 : 0.9,
+          hovertemplate: "%{fullData.name}<br>step %{x}<br>%{y:.6g}<extra></extra>",
+        });
+      });
+
+      const yRange = scaleMode === "smart" ? yAxisRangeMedianCapped(yValues) : null;
+      const chartFont = getThemeVar("--chart-font", "#3d2c1f");
+      const chartTitle = getThemeVar("--chart-title", "#4d3828");
+      const chartGrid = getThemeVar("--chart-grid", "rgba(74,56,40,0.22)");
+      const chartAxisLine = getThemeVar("--chart-axis-line", "rgba(74,56,40,0.34)");
+      const hoverBg = getThemeVar("--chart-hover-bg", "#efe2d4");
+      const hoverBorder = getThemeVar("--chart-hover-border", "rgba(74,56,40,0.28)");
+      const hoverText = getThemeVar("--chart-hover-text", "#2e241d");
+      const mutedText = getThemeVar("--text-muted", "#9e7f63");
+
+      Plotly.newPlot(
+        surface,
+        traces,
+        {
+          paper_bgcolor: "transparent",
+          plot_bgcolor: "transparent",
+          margin: { l: 48, r: 10, t: 10, b: 34 },
+          font: { family: "Manrope, system-ui, sans-serif", color: chartFont, size: 11 },
+          xaxis: {
+            title: { text: "step", font: { size: 10, color: chartTitle } },
+            gridcolor: chartGrid,
+            linecolor: chartAxisLine,
+            zeroline: false,
+            color: chartFont,
+          },
+          yaxis: {
+            title: { text: metric, font: { size: 10, color: chartTitle } },
+            gridcolor: chartGrid,
+            linecolor: chartAxisLine,
+            zeroline: false,
+            color: chartFont,
+            range: yRange || undefined,
+          },
+          hovermode: "x unified",
+          showlegend: traces.length > 1,
+          legend: {
+            orientation: "h",
+            x: 0,
+            y: 1.14,
+            xanchor: "left",
+            yanchor: "bottom",
+            font: { size: 10, color: chartFont },
+          },
+          hoverlabel: {
+            bgcolor: hoverBg,
+            bordercolor: hoverBorder,
+            font: { color: hoverText, family: "Manrope, sans-serif", size: 12 },
+          },
+          annotations: traces.length
+            ? []
+            : [
+                {
+                  text: "No data for visible runs",
+                  xref: "paper",
+                  yref: "paper",
+                  x: 0.5,
+                  y: 0.5,
+                  showarrow: false,
+                  font: { size: 11, color: mutedText },
+                },
+              ],
+        },
+        {
+          displaylogo: false,
+          responsive: true,
+          displayModeBar: "hover",
+          modeBarButtonsToRemove: ["lasso2d", "select2d", "toImage"],
+        }
+      );
+
+      activePlotNodes.push(surface);
+    }
+
+    async function renderMetricPage() {
+      const renderToken = ++currentRenderToken;
+      const runId = selectedRunId;
+      const targetPage = metricPage;
+      clearCharts();
+      updateMetricPager();
+
+      if (!runId || !currentMetricKeys.length) {
+        showChartsEmpty("No chartable numeric metrics were found for this run.");
+        return;
+      }
+
+      const start = targetPage * CHARTS_PER_PAGE;
+      const pageMetrics = currentMetricKeys.slice(start, start + CHARTS_PER_PAGE);
+      if (!pageMetrics.length) {
+        showChartsEmpty("No chartable numeric metrics were found for this run.");
+        return;
+      }
+
+      const visibleRuns = getVisibleRunsForSelectedGroup();
+      if (!visibleRuns.length) {
+        showChartsEmpty("No visible runs in this group.");
+        return;
+      }
+
+      const pendingRuns = visibleRuns.filter((run) => {
+        const series = getRunSeriesCache(run.id);
+        return pageMetrics.some((metric) => !series.has(metric));
+      });
+
+      if (pendingRuns.length) {
+        showChartsEmpty(`Loading ${pageMetrics.length} metrics for ${pendingRuns.length} runs...`);
+        startLoadProgress(`Loading page ${metricPage + 1}: 0/${pendingRuns.length} runs`, 16, 92);
+        try {
+          const results = await fetchMetricsForRuns(pendingRuns, pageMetrics, (done, total) => {
+            if (selectedRunId !== runId || metricPage !== targetPage || renderToken !== currentRenderToken) {
+              return;
+            }
+            loadProgressTextEl.textContent = `Loading page ${metricPage + 1}: ${done}/${total} runs`;
+          });
+
+          if (selectedRunId !== runId || metricPage !== targetPage || renderToken !== currentRenderToken) {
+            return;
+          }
+          completeLoadProgress();
+
+          const failed = results.filter((entry) => entry.error);
+          const partial = results.some((entry) => entry.data && (entry.data.timedOut || entry.data.meta?.row_limit_hit));
+          if (failed.length === results.length) {
+            showChartsEmpty("Failed to load run charts.");
+            setStatus(failed[0].error?.message || "Failed to load run charts.", true);
+            return;
+          }
+
+          if (failed.length) {
+            setStatus(`Loaded with ${failed.length} run fetch errors on this page.`, true);
+          } else if (partial) {
+            setStatus(`Loaded partial metrics for page ${metricPage + 1}.`);
+          } else {
+            const end = Math.min((metricPage + 1) * CHARTS_PER_PAGE, currentMetricKeys.length);
+            setStatus(`Loaded metrics ${start + 1}-${end} across ${visibleRuns.length} runs.`);
+          }
+        } catch (err) {
+          if (selectedRunId !== runId || metricPage !== targetPage || renderToken !== currentRenderToken) {
+            return;
+          }
+          hideLoadProgress();
+          showChartsEmpty("Failed to load run charts.");
+          setStatus(err.message, true);
+          return;
+        }
+      }
+
+      if (selectedRunId !== runId || metricPage !== targetPage || renderToken !== currentRenderToken) {
+        return;
+      }
+
+      hideChartsEmpty();
+      chartsGridEl.classList.add(layoutClassForCount(pageMetrics.length));
+      pageMetrics.forEach((metric) => createPlot(metric, visibleRuns));
+      if (!pendingRuns.length) {
+        const end = Math.min((metricPage + 1) * CHARTS_PER_PAGE, currentMetricKeys.length);
+        setStatus(`Viewing metrics ${start + 1}-${end} across ${visibleRuns.length} runs.`);
+      }
+
+      const nextPage = metricPage + 1;
+      const totalPages = Math.ceil(currentMetricKeys.length / CHARTS_PER_PAGE);
+      if (nextPage < totalPages) {
+        prefetchAdjacentMetricPage(nextPage);
+      }
+    }
+
+    async function loadConfig() {
+      try {
+        const cfg = await fetchJson("/api/config");
+        entityEl.value = cfg.entity || "";
+        projectEl.value = cfg.project || "";
+        baseUrlEl.value = cfg.base_url || "https://api.wandb.ai";
+        if (cfg.has_api_key) {
+          apiKeyEl.placeholder = "saved in session";
+        }
+
+        if (cfg.entity && cfg.project) {
+          await loadRuns();
+        }
+      } catch (err) {
+        setStatus(err.message, true);
+      }
+    }
+
+    async function saveConfig() {
+      setStatus("Saving settings...");
+      await fetchJson("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: apiKeyEl.value,
+          base_url: baseUrlEl.value,
+          entity: entityEl.value,
+          project: projectEl.value,
+        }),
+      });
+
+      if (apiKeyEl.value) {
+        apiKeyEl.value = "";
+      }
+      setStatus("Settings saved.");
+    }
+
+    async function loadRuns() {
+      try {
+        setStatus("Loading runs...");
+        hideLoadProgress();
+        const data = await fetchJson("/api/runs");
+
+        allRuns = data.runs || [];
+        currentProjectPath = String(data.project_path || `${entityEl.value}/${projectEl.value}`).trim();
+        loadStoredGroupVisibilityState();
+        runMetricKeysCache.clear();
+        runMetricSeriesCache.clear();
+        metricsInFlight.clear();
+        prefetchQueue.length = 0;
+        queuedPrefetchRunIds.clear();
+        hiddenRunIdsByGroup.clear();
+        activePrefetchWorkers = 0;
+
+        selectedRunId = null;
+        selectedGroupKey = null;
+        selectedGroupRuns = [];
+        currentMetricKeys = [];
+        metricPage = 0;
+
+        chartsTitleEl.textContent = "Select a run";
+        selectedMetaEl.textContent = "";
+        clearCharts();
+        updateMetricPager();
+        renderCompareToolbar();
+        showChartsEmpty("Select a run to load charts.");
+
+        renderRunGroups();
+        const groupCount = new Set(allRuns.map((run) => normalizeGroup(run.group))).size;
+        runsCountEl.textContent = `${allRuns.length} runs in ${groupCount} groups · ${data.project_path}`;
+        setStatus(`Loaded ${allRuns.length} runs.`);
+      } catch (err) {
+        allRuns = [];
+        renderRunGroups();
+        runsCountEl.textContent = "No runs loaded.";
+        setStatus(err.message, true);
+      }
+    }
+
+    async function loadRunCharts(run) {
+      const loadToken = ++currentLoadToken;
+      selectedRunId = run.id;
+      selectedGroupKey = normalizeGroup(run.group);
+      selectedGroupRuns = getRunsForGroup(selectedGroupKey);
+      initializeGroupVisibility(selectedGroupKey, selectedGroupRuns, selectedRunId);
+      renderRunGroups();
+      renderCompareToolbar();
+
+      chartsTitleEl.textContent = runLabel(run);
+      selectedMetaEl.textContent = `${selectedGroupKey} · ${run.state || "unknown"} · ${toLocalDate(run.created_at)}`;
+
+      metricPage = 0;
+      currentMetricKeys = [];
+      clearCharts();
+      updateMetricPager();
+      showChartsEmpty("Loading metric list...");
+      startLoadProgress(`Loading metrics for ${run.id}...`, 14, 82);
+      setStatus(`Loading metrics for ${run.id}...`);
+
+      try {
+        const keyData = await fetchRunMetricKeys(run.id);
+        if (selectedRunId !== run.id || loadToken !== currentLoadToken) {
+          return;
+        }
+
+        const metrics = keyData.metrics || [];
+        if (!metrics.length) {
+          hideLoadProgress();
+          showChartsEmpty("No chartable numeric metrics found.");
+          setStatus("No chartable numeric metrics found.");
+          return;
+        }
+
+        currentMetricKeys = metrics;
+        metricPage = 0;
+        completeLoadProgress();
+
+        if (keyData.timedOut) {
+          const budget = Number(keyData.meta?.time_budget_s || METRIC_KEYS_TIME_BUDGET_S).toFixed(0);
+          setStatus(`Loaded ${metrics.length} metrics (partial, ${budget}s budget).`);
+        } else {
+          setStatus(`Loaded ${metrics.length} metrics. Comparing ${getVisibleRunsForSelectedGroup().length} run(s).`);
+        }
+
+        await renderMetricPage();
+      } catch (err) {
+        if (selectedRunId === run.id && loadToken === currentLoadToken) {
+          hideLoadProgress();
+          showChartsEmpty("Failed to load run charts.");
+          setStatus(err.message, true);
+        }
+      }
+    }
+
+    document.getElementById("saveBtn").addEventListener("click", async () => {
+      try {
+        await saveConfig();
+      } catch (err) {
+        setStatus(err.message, true);
+      }
+    });
+
+    document.getElementById("loadRunsBtn").addEventListener("click", async () => {
+      try {
+        await saveConfig();
+        await loadRuns();
+      } catch (err) {
+        setStatus(err.message, true);
+      }
+    });
+
+    themeBtn.addEventListener("click", async () => {
+      applyTheme(themeMode === "dark" ? "light" : "dark");
+      if (selectedRunId && currentMetricKeys.length) {
+        await renderMetricPage();
+      }
+    });
+
+    runSearchEl.addEventListener("input", () => {
+      renderRunGroups();
+    });
+
+    groupRegexEnabledEl.addEventListener("change", () => {
+      syncGroupRegexFilterFromUi({ announceInvalid: true });
+      renderRunGroups();
+    });
+
+    groupRegexInputEl.addEventListener("input", () => {
+      syncGroupRegexFilterFromUi();
+      renderRunGroups();
+    });
+
+    groupRegexInputEl.addEventListener("blur", () => {
+      syncGroupRegexFilterFromUi({ announceInvalid: true });
+      renderRunGroups();
+    });
+
+    prevMetricsBtn.addEventListener("click", async () => {
+      if (metricPage <= 0) return;
+      metricPage -= 1;
+      await renderMetricPage();
+    });
+
+    nextMetricsBtn.addEventListener("click", async () => {
+      const totalPages = Math.ceil(currentMetricKeys.length / CHARTS_PER_PAGE);
+      if (metricPage >= totalPages - 1) return;
+      metricPage += 1;
+      await renderMetricPage();
+    });
+
+    scaleToggleEl.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".scale-btn");
+      if (!btn || btn.dataset.mode === scaleMode) return;
+      scaleMode = btn.dataset.mode;
+      scaleToggleEl.querySelectorAll(".scale-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      if (selectedRunId && currentMetricKeys.length) {
+        await renderMetricPage();
+      }
+    });
+
+    focusSelectedBtn.addEventListener("click", async () => {
+      await showOnlySelectedRun();
+    });
+
+    showTopRunsBtn.addEventListener("click", async () => {
+      await showTopRunsForCompare(DEFAULT_VISIBLE_COMPARE_RUNS);
+    });
+
+    window.addEventListener("resize", () => {
+      activePlotNodes.forEach((node) => Plotly.Plots.resize(node));
+    });
+
+    applyTheme(readStoredTheme());
+    loadStoredGroupRegexFilterSettings();
+    updateMetricPager();
+    renderCompareToolbar();
+    loadConfig();
+  </script>
+</body>
+</html>
