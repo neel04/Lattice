@@ -12,3 +12,11 @@ uv run python app.py
 ```
 
 Open `http://127.0.0.1:8000`.
+
+## Screenshots
+
+Light mode
+![Light mode](screenshots/light-mode.png)
+
+Dark mode
+![Dark mode](screenshots/dark-mode.png)

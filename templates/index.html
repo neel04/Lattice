@@ -1924,9 +1924,7 @@
         const x = points.map((pt) => pt.x);
         const y = points.map((pt) => pt.y);
         yValues.push(...y.filter((v) => Number.isFinite(v)));
-        const dash = run.id === selectedRunId
-          ? "solid"
-          : ["dash", "dot", "dashdot", "longdash", "longdashdot"][traceIdx % 5];
+        const dash = run.id === selectedRunId ? "solid" : "2.6px,1.6px";
         traces.push({
           x,
           y,
@@ -1935,7 +1933,7 @@
           name: runLabel(run),
           line: {
             color: colorForRunLine(run.id),
-            width: run.id === selectedRunId ? 2.6 : 2.0,
+            width: run.id === selectedRunId ? 2.6 : 1.9,
             dash,
             shape: "linear",
           },
