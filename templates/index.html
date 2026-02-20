@@ -260,6 +260,12 @@
       background: var(--surface-alt);
     }
 
+    .btn-secondary.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
     .btn-page {
       background: transparent;
       border-color: var(--border);
@@ -811,10 +817,142 @@
       border-bottom: 1px solid var(--border);
     }
 
+    .chart-head-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px 8px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chart-head-row .chart-head {
+      padding: 0;
+      border-bottom: 0;
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chart-smooth-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .chart-smooth-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .chart-smooth-check span {
+      transform: translateY(0.2px);
+    }
+
+    .chart-smooth-label {
+      color: var(--text-muted);
+      font-size: 0.64rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .chart-smooth-toggle {
+      width: 12px;
+      height: 12px;
+      accent-color: var(--accent);
+      margin: 0;
+    }
+
+    .chart-smooth-input {
+      width: 42px;
+      height: 20px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.66rem;
+      padding: 0 5px;
+      font-family: inherit;
+      line-height: 1;
+    }
+
+    .chart-smooth-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-soft);
+    }
+
+    .chart-smooth-input:disabled {
+      opacity: 0.5;
+    }
+
     .plot-surface {
       min-height: 0;
       width: 100%;
       height: 100%;
+      cursor: zoom-in;
+    }
+
+    .plot-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1200;
+      background: rgba(20, 16, 12, 0.44);
+      backdrop-filter: blur(3px);
+      display: grid;
+      place-items: center;
+      padding: 28px;
+    }
+
+    .plot-modal[hidden] {
+      display: none;
+    }
+
+    .plot-modal-card {
+      width: min(1220px, 96vw);
+      height: min(84vh, 860px);
+      border-radius: 12px;
+      border: 1px solid var(--border-hover);
+      background: var(--surface);
+      box-shadow: 0 18px 56px rgba(0, 0, 0, 0.24);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+    }
+
+    .plot-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px 10px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .plot-modal-title {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .plot-modal-surface {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
     }
 
     /* ── Empty States ── */
@@ -915,6 +1053,7 @@
           <input id="project" type="text" placeholder="project-name">
         </div>
         <div class="actions">
+          <button class="btn-secondary" id="autoRefreshBtn" type="button">Auto 60s: on</button>
           <button class="btn-secondary" id="themeBtn" type="button">Dark mode</button>
           <button class="btn-secondary" id="saveBtn" type="button">Save</button>
           <button class="btn-primary" id="loadRunsBtn" type="button">Load runs</button>
@@ -986,12 +1125,23 @@
     </section>
   </main>
 
+  <div class="plot-modal" id="plotModal" hidden>
+    <div class="plot-modal-card panel">
+      <div class="plot-modal-head">
+        <h3 class="plot-modal-title" id="plotModalTitle">Expanded chart</h3>
+        <button class="btn-page" id="plotModalCloseBtn" type="button">Close</button>
+      </div>
+      <div class="plot-modal-surface" id="plotModalSurface"></div>
+    </div>
+  </div>
+
   <script>
     const apiKeyEl = document.getElementById("apiKey");
     const baseUrlEl = document.getElementById("baseUrl");
     const entityEl = document.getElementById("entity");
     const projectEl = document.getElementById("project");
     const statusEl = document.getElementById("status");
+    const autoRefreshBtn = document.getElementById("autoRefreshBtn");
     const themeBtn = document.getElementById("themeBtn");
 
     const runSearchEl = document.getElementById("runSearch");
@@ -1017,6 +1167,10 @@
     const compareRunsEl = document.getElementById("compareRuns");
     const focusSelectedBtn = document.getElementById("focusSelectedBtn");
     const showTopRunsBtn = document.getElementById("showTopRunsBtn");
+    const plotModalEl = document.getElementById("plotModal");
+    const plotModalTitleEl = document.getElementById("plotModalTitle");
+    const plotModalSurfaceEl = document.getElementById("plotModalSurface");
+    const plotModalCloseBtn = document.getElementById("plotModalCloseBtn");
 
     const CHARTS_PER_PAGE = 4;
     const PRELOAD_GROUP_RUNS = 6;
@@ -1032,11 +1186,17 @@
     const METRICS_PAGE_TIME_BUDGET_S = 35;
     const METRIC_KEYS_TIMEOUT_MS = 25000;
     const METRICS_PAGE_TIMEOUT_MS = 60000;
+    const AUTO_REFRESH_INTERVAL_MS = 60000;
+    const DEFAULT_SMOOTH_WINDOW = 15;
+    const MIN_SMOOTH_WINDOW = 2;
+    const MAX_SMOOTH_WINDOW = 200;
     const THEME_STORAGE_KEY = "lattice.theme";
+    const AUTO_REFRESH_STORAGE_KEY = "lattice.autoRefresh.enabled";
     const GROUP_FILTER_ENABLED_STORAGE_KEY = "lattice.groupFilter.enabled";
     const GROUP_FILTER_REGEX_STORAGE_KEY = "lattice.groupFilter.regex";
     const DEFAULT_GROUP_EXCLUDE_REGEX = "Sweeps_*";
     const GROUP_VISIBILITY_STORAGE_PREFIX = "lattice.groupVisibility.";
+    const COMPARE_VISIBILITY_STORAGE_PREFIX = "lattice.compareVisibility.";
 
     const CHART_CHIP_PALETTE = [
       "#f4a7a7",
@@ -1065,6 +1225,7 @@
     ];
 
     const activePlotNodes = [];
+    const activePlotsByMetric = new Map();
     const openGroups = new Map();
     const runMetricKeysCache = new Map();
     const runMetricSeriesCache = new Map();
@@ -1072,6 +1233,7 @@
     const prefetchQueue = [];
     const queuedPrefetchRunIds = new Set();
     const hiddenRunIdsByGroup = new Map();
+    const metricSmoothingByMetric = new Map();
 
     let allRuns = [];
     let selectedRunId = null;
@@ -1090,6 +1252,12 @@
     let groupRegexFilterPattern = DEFAULT_GROUP_EXCLUDE_REGEX;
     let groupRegexFilterCompiled = /^Sweeps_.*$/;
     let currentProjectPath = "";
+    let autoRefreshEnabled = true;
+    let autoRefreshTimer = null;
+    let autoRefreshInFlight = false;
+    let isRunsLoading = false;
+    let isRunChartsLoading = false;
+    let expandedMetric = null;
 
     function setStatus(message, isError = false) {
       statusEl.textContent = message;
@@ -1120,12 +1288,40 @@
       } catch {}
     }
 
+    function readStoredAutoRefreshEnabled() {
+      try {
+        const raw = localStorage.getItem(AUTO_REFRESH_STORAGE_KEY);
+        if (raw === "0") return false;
+        if (raw === "1") return true;
+      } catch {}
+      return true;
+    }
+
+    function setAutoRefreshButtonState() {
+      autoRefreshBtn.textContent = autoRefreshEnabled ? "Auto 60s: on" : "Auto 60s: off";
+      autoRefreshBtn.classList.toggle("active", autoRefreshEnabled);
+    }
+
+    function persistAutoRefreshEnabled() {
+      try {
+        localStorage.setItem(AUTO_REFRESH_STORAGE_KEY, autoRefreshEnabled ? "1" : "0");
+      } catch {}
+    }
+
     function groupVisibilityStorageKey() {
       const path = String(currentProjectPath || "").trim().toLowerCase();
       if (!path) {
         return null;
       }
       return `${GROUP_VISIBILITY_STORAGE_PREFIX}${path}`;
+    }
+
+    function compareVisibilityStorageKey() {
+      const path = String(currentProjectPath || "").trim().toLowerCase();
+      if (!path) {
+        return null;
+      }
+      return `${COMPARE_VISIBILITY_STORAGE_PREFIX}${path}`;
     }
 
     function loadStoredGroupVisibilityState() {
@@ -1158,6 +1354,49 @@
 
       try {
         localStorage.setItem(key, JSON.stringify(Object.fromEntries(openGroups)));
+      } catch {}
+    }
+
+    function loadStoredCompareVisibilityState() {
+      hiddenRunIdsByGroup.clear();
+      const key = compareVisibilityStorageKey();
+      if (!key) {
+        return;
+      }
+
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) {
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") {
+          return;
+        }
+        for (const [group, runIds] of Object.entries(parsed)) {
+          if (!Array.isArray(runIds)) {
+            continue;
+          }
+          hiddenRunIdsByGroup.set(group, new Set(runIds.map((id) => String(id)).filter(Boolean)));
+        }
+      } catch {}
+    }
+
+    function persistCompareVisibilityState() {
+      const key = compareVisibilityStorageKey();
+      if (!key) {
+        return;
+      }
+
+      try {
+        const serializable = {};
+        for (const [group, hiddenSet] of hiddenRunIdsByGroup.entries()) {
+          if (!hiddenSet || hiddenSet.size === 0) {
+            continue;
+          }
+          serializable[group] = Array.from(hiddenSet);
+        }
+        localStorage.setItem(key, JSON.stringify(serializable));
       } catch {}
     }
 
@@ -1329,6 +1568,68 @@
       return colorForRunIndex(safeIdx);
     }
 
+    function normalizeSmoothWindow(value) {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) {
+        return DEFAULT_SMOOTH_WINDOW;
+      }
+      return Math.max(MIN_SMOOTH_WINDOW, Math.min(MAX_SMOOTH_WINDOW, Math.round(parsed)));
+    }
+
+    function getMetricSmoothing(metric) {
+      if (!metricSmoothingByMetric.has(metric)) {
+        metricSmoothingByMetric.set(metric, { enabled: false, window: DEFAULT_SMOOTH_WINDOW });
+      }
+      const current = metricSmoothingByMetric.get(metric);
+      return {
+        enabled: Boolean(current.enabled),
+        window: normalizeSmoothWindow(current.window),
+      };
+    }
+
+    function setMetricSmoothing(metric, patch) {
+      const current = getMetricSmoothing(metric);
+      const next = {
+        enabled: typeof patch.enabled === "boolean" ? patch.enabled : current.enabled,
+        window: patch.window == null ? current.window : normalizeSmoothWindow(patch.window),
+      };
+      metricSmoothingByMetric.set(metric, next);
+      return next;
+    }
+
+    function runningAverageSeries(points, windowSize) {
+      const window = normalizeSmoothWindow(windowSize);
+      if (window <= 1 || points.length <= 1) {
+        return points.map((pt) => Number(pt.y));
+      }
+
+      const out = new Array(points.length);
+      const queue = [];
+      let sum = 0;
+      let validCount = 0;
+      for (let i = 0; i < points.length; i += 1) {
+        const y = Number(points[i].y);
+        if (Number.isFinite(y)) {
+          queue.push(y);
+          sum += y;
+          validCount += 1;
+        } else {
+          queue.push(null);
+        }
+
+        if (queue.length > window) {
+          const removed = queue.shift();
+          if (removed !== null) {
+            sum -= removed;
+            validCount -= 1;
+          }
+        }
+
+        out[i] = validCount > 0 ? sum / validCount : null;
+      }
+      return out;
+    }
+
     async function fetchJson(url, options = {}) {
       const { timeoutMs = 0, ...fetchOptions } = options;
       let timeoutId = null;
@@ -1421,13 +1722,14 @@
       return promise;
     }
 
-    async function fetchMetricsForKeys(runId, metricKeys) {
+    async function fetchMetricsForKeys(runId, metricKeys, options = {}) {
       if (!metricKeys.length) {
         return { charts: [], partial: false, timedOut: false, meta: {} };
       }
 
+      const forceRefresh = Boolean(options.forceRefresh);
       const runSeries = getRunSeriesCache(runId);
-      const missing = metricKeys.filter((metric) => !runSeries.has(metric));
+      const missing = forceRefresh ? [...metricKeys] : metricKeys.filter((metric) => !runSeries.has(metric));
       if (!missing.length) {
         return {
           charts: metricKeys.map((metric) => ({ metric, points: runSeries.get(metric) || [] })),
@@ -1437,7 +1739,7 @@
         };
       }
 
-      const inflightKey = `series:${runId}:${missing.join("\u0001")}`;
+      const inflightKey = `series:${runId}:${missing.join("\u0001")}:${forceRefresh ? "refresh" : "cold"}`;
       let data;
       if (metricsInFlight.has(inflightKey)) {
         data = await metricsInFlight.get(inflightKey);
@@ -1563,6 +1865,7 @@
 
     function initializeGroupVisibility(groupKey, runs, pinnedRunId) {
       const hidden = getHiddenSetForGroup(groupKey);
+      const beforeSignature = Array.from(hidden).sort().join("\u0001");
       const runIds = new Set(runs.map((run) => run.id));
 
       for (const hiddenId of Array.from(hidden)) {
@@ -1593,6 +1896,11 @@
           break;
         }
         hidden.add(candidate.id);
+      }
+
+      const afterSignature = Array.from(hidden).sort().join("\u0001");
+      if (beforeSignature !== afterSignature) {
+        persistCompareVisibilityState();
       }
     }
 
@@ -1685,6 +1993,7 @@
         hidden.add(run.id);
       }
 
+      persistCompareVisibilityState();
       renderCompareToolbar();
       await renderMetricPage();
     }
@@ -1698,6 +2007,7 @@
           hidden.add(run.id);
         }
       }
+      persistCompareVisibilityState();
       renderCompareToolbar();
       await renderMetricPage();
     }
@@ -1720,6 +2030,7 @@
         }
       }
 
+      persistCompareVisibilityState();
       renderCompareToolbar();
       await renderMetricPage();
     }
@@ -1787,11 +2098,18 @@
       });
     }
 
+    function updateRunsSummary(projectPath) {
+      const groupCount = new Set(allRuns.map((run) => normalizeGroup(run.group))).size;
+      runsCountEl.textContent = `${allRuns.length} runs in ${groupCount} groups · ${projectPath}`;
+    }
+
     function clearCharts() {
+      closeExpandedMetricPlot();
       while (activePlotNodes.length) {
         const node = activePlotNodes.pop();
         Plotly.purge(node);
       }
+      activePlotsByMetric.clear();
       chartsGridEl.innerHTML = "";
       chartsGridEl.className = "charts-grid";
     }
@@ -1851,7 +2169,7 @@
       return [rawMin - pad, capMax + pad];
     }
 
-    async function fetchMetricsForRuns(runs, metricKeys, onProgress) {
+    async function fetchMetricsForRuns(runs, metricKeys, onProgress, options = {}) {
       if (!runs.length || !metricKeys.length) {
         return [];
       }
@@ -1870,7 +2188,7 @@
           }
           const run = runs[idx];
           try {
-            const data = await fetchMetricsForKeys(run.id, metricKeys);
+            const data = await fetchMetricsForKeys(run.id, metricKeys, options);
             results[idx] = { run, data };
           } catch (error) {
             results[idx] = { run, error };
@@ -1900,48 +2218,81 @@
       }
     }
 
-    function createPlot(metric, runs) {
-      const card = document.createElement("article");
-      card.className = "chart-card";
-
-      const title = document.createElement("h3");
-      title.className = "chart-head";
-      title.textContent = metric;
-      card.appendChild(title);
-
-      const surface = document.createElement("div");
-      surface.className = "plot-surface";
-      card.appendChild(surface);
-      chartsGridEl.appendChild(card);
-
+    function buildMetricTraces(metric, runs) {
       const traces = [];
       const yValues = [];
-      runs.forEach((run, traceIdx) => {
+      const smoothing = getMetricSmoothing(metric);
+      runs.forEach((run) => {
         const points = getRunSeriesCache(run.id).get(metric) || [];
         if (!points.length) {
           return;
         }
         const x = points.map((pt) => pt.x);
-        const y = points.map((pt) => pt.y);
-        yValues.push(...y.filter((v) => Number.isFinite(v)));
+        const yRaw = points.map((pt) => Number(pt.y));
         const dash = run.id === selectedRunId ? "solid" : "2.6px,1.6px";
+        const color = colorForRunLine(run.id);
+
+        if (smoothing.enabled && smoothing.window > 1) {
+          traces.push({
+            x,
+            y: yRaw,
+            mode: "lines",
+            type: "scatter",
+            name: runLabel(run),
+            line: {
+              color,
+              width: run.id === selectedRunId ? 1.5 : 1.2,
+              dash,
+              shape: "linear",
+            },
+            opacity: run.id === selectedRunId ? 0.24 : 0.15,
+            showlegend: false,
+            hoverinfo: "skip",
+            hovertemplate: null,
+          });
+          const ySmooth = runningAverageSeries(points, smoothing.window);
+          yValues.push(...ySmooth.filter((v) => Number.isFinite(v)));
+          traces.push({
+            x,
+            y: ySmooth,
+            mode: "lines",
+            type: "scatter",
+            name: runLabel(run),
+            line: {
+              color,
+              width: run.id === selectedRunId ? 2.8 : 2.2,
+              dash,
+              shape: "linear",
+            },
+            opacity: run.id === selectedRunId ? 1 : 0.95,
+            hoverinfo: "x+y+name",
+            hovertemplate: "%{fullData.name}<br>%{y:.6g}<extra></extra>",
+          });
+          return;
+        }
+
+        yValues.push(...yRaw.filter((v) => Number.isFinite(v)));
         traces.push({
           x,
-          y,
+          y: yRaw,
           mode: "lines",
           type: "scatter",
           name: runLabel(run),
           line: {
-            color: colorForRunLine(run.id),
+            color,
             width: run.id === selectedRunId ? 2.6 : 1.9,
             dash,
             shape: "linear",
           },
           opacity: run.id === selectedRunId ? 1 : 0.9,
-          hovertemplate: "%{fullData.name}<br>step %{x}<br>%{y:.6g}<extra></extra>",
+          hoverinfo: "x+y+name",
+          hovertemplate: "%{fullData.name}<br>%{y:.6g}<extra></extra>",
         });
       });
+      return { traces, yValues };
+    }
 
+    function buildMetricLayout(metric, traces, yValues) {
       const yRange = scaleMode === "smart" ? yAxisRangeMedianCapped(yValues) : null;
       const chartFont = getThemeVar("--chart-font", "#3d2c1f");
       const chartTitle = getThemeVar("--chart-title", "#4d3828");
@@ -1951,11 +2302,10 @@
       const hoverBorder = getThemeVar("--chart-hover-border", "rgba(74,56,40,0.28)");
       const hoverText = getThemeVar("--chart-hover-text", "#2e241d");
       const mutedText = getThemeVar("--text-muted", "#9e7f63");
+      const legendTraceCount = traces.filter((trace) => trace.showlegend !== false).length;
 
-      Plotly.newPlot(
-        surface,
-        traces,
-        {
+      return {
+        layout: {
           paper_bgcolor: "transparent",
           plot_bgcolor: "transparent",
           margin: { l: 48, r: 10, t: 10, b: 34 },
@@ -1976,7 +2326,7 @@
             range: yRange || undefined,
           },
           hovermode: "x unified",
-          showlegend: traces.length > 1,
+          showlegend: legendTraceCount > 1,
           legend: {
             orientation: "h",
             x: 0,
@@ -1988,7 +2338,7 @@
           hoverlabel: {
             bgcolor: hoverBg,
             bordercolor: hoverBorder,
-            font: { color: hoverText, family: "Manrope, sans-serif", size: 12 },
+            font: { color: hoverText, family: "Manrope, sans-serif", size: 10 },
           },
           annotations: traces.length
             ? []
@@ -2004,15 +2354,192 @@
                 },
               ],
         },
-        {
+        config: {
           displaylogo: false,
           responsive: true,
           displayModeBar: "hover",
           modeBarButtonsToRemove: ["lasso2d", "select2d", "toImage"],
-        }
+        },
+        yRange,
+      };
+    }
+
+    async function renderExpandedMetricPlot() {
+      if (!expandedMetric || plotModalEl.hidden) {
+        return;
+      }
+      const visibleRuns = getVisibleRunsForSelectedGroup();
+      if (!visibleRuns.length) {
+        return;
+      }
+      const { traces, yValues } = buildMetricTraces(expandedMetric, visibleRuns);
+      const { layout, config } = buildMetricLayout(expandedMetric, traces, yValues);
+      const expandedLayout = {
+        ...layout,
+        margin: { l: 56, r: 20, t: 16, b: 46 },
+        legend: {
+          ...(layout.legend || {}),
+          y: 1.12,
+        },
+      };
+      await Plotly.react(plotModalSurfaceEl, traces, expandedLayout, {
+        ...config,
+        displayModeBar: true,
+      });
+    }
+
+    async function openExpandedMetricPlot(metric) {
+      if (!metric) {
+        return;
+      }
+      if (!plotModalEl.hidden && expandedMetric === metric) {
+        return;
+      }
+      expandedMetric = metric;
+      plotModalTitleEl.textContent = metric;
+      plotModalEl.hidden = false;
+      await renderExpandedMetricPlot();
+    }
+
+    function closeExpandedMetricPlot() {
+      expandedMetric = null;
+      if (!plotModalEl.hidden) {
+        plotModalEl.hidden = true;
+      }
+      Plotly.purge(plotModalSurfaceEl);
+    }
+
+    function createPlot(metric, runs) {
+      const card = document.createElement("article");
+      card.className = "chart-card";
+
+      const header = document.createElement("div");
+      header.className = "chart-head-row";
+
+      const title = document.createElement("h3");
+      title.className = "chart-head";
+      title.textContent = metric;
+      header.appendChild(title);
+
+      const smoothing = getMetricSmoothing(metric);
+      const controls = document.createElement("div");
+      controls.className = "chart-smooth-controls";
+      controls.innerHTML = `
+        <label class="chart-smooth-check">
+          <input class="chart-smooth-toggle" type="checkbox" ${smoothing.enabled ? "checked" : ""}>
+          <span>Smooth</span>
+        </label>
+        <span class="chart-smooth-label">N</span>
+        <input class="chart-smooth-input" type="number" min="${MIN_SMOOTH_WINDOW}" max="${MAX_SMOOTH_WINDOW}" step="1" value="${smoothing.window}" ${smoothing.enabled ? "" : "disabled"}>
+      `;
+      header.appendChild(controls);
+      card.appendChild(header);
+
+      const surface = document.createElement("div");
+      surface.className = "plot-surface";
+      card.appendChild(surface);
+      chartsGridEl.appendChild(card);
+
+      const { traces, yValues } = buildMetricTraces(metric, runs);
+      const { layout, config } = buildMetricLayout(metric, traces, yValues);
+
+      Plotly.newPlot(
+        surface,
+        traces,
+        layout,
+        config
+      );
+
+      surface.on("plotly_doubleclick", () => {
+        openExpandedMetricPlot(metric).catch(() => {});
+        return false;
+      });
+      surface.addEventListener(
+        "dblclick",
+        (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openExpandedMetricPlot(metric).catch(() => {});
+        },
+        { capture: true }
       );
 
       activePlotNodes.push(surface);
+      activePlotsByMetric.set(metric, surface);
+
+      const smoothToggleEl = controls.querySelector(".chart-smooth-toggle");
+      const smoothInputEl = controls.querySelector(".chart-smooth-input");
+      smoothToggleEl.addEventListener("change", async () => {
+        const next = setMetricSmoothing(metric, { enabled: Boolean(smoothToggleEl.checked) });
+        smoothInputEl.disabled = !next.enabled;
+        await updateVisibleChartsInPlace([metric], getVisibleRunsForSelectedGroup());
+      });
+      smoothInputEl.addEventListener("change", async () => {
+        const next = setMetricSmoothing(metric, { window: smoothInputEl.value });
+        smoothInputEl.value = String(next.window);
+        if (next.enabled) {
+          await updateVisibleChartsInPlace([metric], getVisibleRunsForSelectedGroup());
+        }
+      });
+    }
+
+    async function updateVisibleChartsInPlace(metrics, runs) {
+      if (!metrics.length || !runs.length || !activePlotNodes.length) {
+        return;
+      }
+
+      const tasks = [];
+      for (const metric of metrics) {
+        const surface = activePlotsByMetric.get(metric);
+        if (!surface) {
+          continue;
+        }
+
+        const { traces, yValues } = buildMetricTraces(metric, runs);
+        const { layout, yRange } = buildMetricLayout(metric, traces, yValues);
+
+        if (surface.data && surface.data.length === traces.length) {
+          const traceIndices = traces.map((_, idx) => idx);
+          tasks.push(
+            Plotly.update(
+              surface,
+              {
+                x: traces.map((trace) => trace.x),
+                y: traces.map((trace) => trace.y),
+                name: traces.map((trace) => trace.name),
+                "line.color": traces.map((trace) => trace.line.color),
+                "line.width": traces.map((trace) => trace.line.width),
+                "line.dash": traces.map((trace) => trace.line.dash),
+                opacity: traces.map((trace) => trace.opacity),
+                hoverinfo: traces.map((trace) => trace.hoverinfo || "x+y+name"),
+                hovertemplate: traces.map((trace) => trace.hovertemplate),
+                showlegend: traces.map((trace) => trace.showlegend !== false),
+              },
+              {
+                showlegend: traces.length > 1,
+                "yaxis.range": yRange || null,
+                "yaxis.autorange": yRange ? false : true,
+                annotations: layout.annotations,
+              },
+              traceIndices
+            )
+          );
+        } else {
+          tasks.push(
+            Plotly.react(surface, traces, layout, {
+              displaylogo: false,
+              responsive: true,
+              displayModeBar: "hover",
+              modeBarButtonsToRemove: ["lasso2d", "select2d", "toImage"],
+            })
+          );
+        }
+      }
+
+      await Promise.all(tasks);
+      if (expandedMetric && metrics.includes(expandedMetric)) {
+        await renderExpandedMetricPlot();
+      }
     }
 
     async function renderMetricPage() {
@@ -2107,6 +2634,112 @@
       }
     }
 
+    function stopAutoRefreshLoop() {
+      if (autoRefreshTimer) {
+        clearInterval(autoRefreshTimer);
+        autoRefreshTimer = null;
+      }
+    }
+
+    async function runBackgroundRefresh() {
+      if (!autoRefreshEnabled || autoRefreshInFlight || isRunsLoading || isRunChartsLoading) {
+        return;
+      }
+      if (!entityEl.value.trim() || !projectEl.value.trim()) {
+        return;
+      }
+
+      autoRefreshInFlight = true;
+      const runSnapshot = selectedRunId;
+      const pageSnapshot = metricPage;
+      const metricCountSnapshot = currentMetricKeys.length;
+
+      try {
+        const data = await fetchJson("/api/runs");
+        const latestRuns = data.runs || [];
+        const latestProjectPath = String(data.project_path || `${entityEl.value}/${projectEl.value}`).trim();
+
+        allRuns = latestRuns;
+        if (latestProjectPath && latestProjectPath !== currentProjectPath) {
+          currentProjectPath = latestProjectPath;
+          loadStoredGroupVisibilityState();
+          loadStoredCompareVisibilityState();
+        } else if (!currentProjectPath) {
+          currentProjectPath = latestProjectPath;
+          loadStoredCompareVisibilityState();
+        }
+
+        renderRunGroups();
+        updateRunsSummary(data.project_path || latestProjectPath);
+
+        if (!runSnapshot) {
+          return;
+        }
+
+        const selectedRun = allRuns.find((run) => run.id === runSnapshot);
+        if (!selectedRun) {
+          selectedRunId = null;
+          selectedGroupKey = null;
+          selectedGroupRuns = [];
+          currentMetricKeys = [];
+          metricPage = 0;
+          chartsTitleEl.textContent = "Select a run";
+          selectedMetaEl.textContent = "";
+          clearCharts();
+          updateMetricPager();
+          renderCompareToolbar();
+          showChartsEmpty("Previously selected run no longer exists.");
+          setStatus("Selected run is no longer available.", true);
+          return;
+        }
+
+        selectedGroupKey = normalizeGroup(selectedRun.group);
+        selectedGroupRuns = getRunsForGroup(selectedGroupKey);
+        initializeGroupVisibility(selectedGroupKey, selectedGroupRuns, selectedRunId);
+        renderCompareToolbar();
+        selectedMetaEl.textContent = `${selectedGroupKey} · ${selectedRun.state || "unknown"} · ${toLocalDate(selectedRun.created_at)}`;
+
+        if (
+          selectedRunId !== runSnapshot ||
+          metricPage !== pageSnapshot ||
+          metricCountSnapshot !== currentMetricKeys.length ||
+          !currentMetricKeys.length
+        ) {
+          return;
+        }
+
+        const start = metricPage * CHARTS_PER_PAGE;
+        const pageMetrics = currentMetricKeys.slice(start, start + CHARTS_PER_PAGE);
+        const visibleRuns = getVisibleRunsForSelectedGroup();
+        if (!pageMetrics.length || !visibleRuns.length) {
+          return;
+        }
+
+        await fetchMetricsForRuns(visibleRuns, pageMetrics, null, { forceRefresh: true });
+        if (
+          selectedRunId === runSnapshot &&
+          metricPage === pageSnapshot &&
+          metricCountSnapshot === currentMetricKeys.length
+        ) {
+          await updateVisibleChartsInPlace(pageMetrics, visibleRuns);
+        }
+      } catch (err) {
+        setStatus(`Auto-refresh failed: ${err.message}`, true);
+      } finally {
+        autoRefreshInFlight = false;
+      }
+    }
+
+    function startAutoRefreshLoop() {
+      stopAutoRefreshLoop();
+      if (!autoRefreshEnabled) {
+        return;
+      }
+      autoRefreshTimer = setInterval(() => {
+        runBackgroundRefresh();
+      }, AUTO_REFRESH_INTERVAL_MS);
+    }
+
     async function loadConfig() {
       try {
         const cfg = await fetchJson("/api/config");
@@ -2145,6 +2778,7 @@
     }
 
     async function loadRuns() {
+      isRunsLoading = true;
       try {
         setStatus("Loading runs...");
         hideLoadProgress();
@@ -2153,12 +2787,12 @@
         allRuns = data.runs || [];
         currentProjectPath = String(data.project_path || `${entityEl.value}/${projectEl.value}`).trim();
         loadStoredGroupVisibilityState();
+        loadStoredCompareVisibilityState();
         runMetricKeysCache.clear();
         runMetricSeriesCache.clear();
         metricsInFlight.clear();
         prefetchQueue.length = 0;
         queuedPrefetchRunIds.clear();
-        hiddenRunIdsByGroup.clear();
         activePrefetchWorkers = 0;
 
         selectedRunId = null;
@@ -2175,19 +2809,21 @@
         showChartsEmpty("Select a run to load charts.");
 
         renderRunGroups();
-        const groupCount = new Set(allRuns.map((run) => normalizeGroup(run.group))).size;
-        runsCountEl.textContent = `${allRuns.length} runs in ${groupCount} groups · ${data.project_path}`;
+        updateRunsSummary(data.project_path);
         setStatus(`Loaded ${allRuns.length} runs.`);
       } catch (err) {
         allRuns = [];
         renderRunGroups();
         runsCountEl.textContent = "No runs loaded.";
         setStatus(err.message, true);
+      } finally {
+        isRunsLoading = false;
       }
     }
 
     async function loadRunCharts(run) {
       const loadToken = ++currentLoadToken;
+      isRunChartsLoading = true;
       selectedRunId = run.id;
       selectedGroupKey = normalizeGroup(run.group);
       selectedGroupRuns = getRunsForGroup(selectedGroupKey);
@@ -2238,6 +2874,10 @@
           showChartsEmpty("Failed to load run charts.");
           setStatus(err.message, true);
         }
+      } finally {
+        if (loadToken === currentLoadToken) {
+          isRunChartsLoading = false;
+        }
       }
     }
 
@@ -2256,6 +2896,14 @@
       } catch (err) {
         setStatus(err.message, true);
       }
+    });
+
+    autoRefreshBtn.addEventListener("click", () => {
+      autoRefreshEnabled = !autoRefreshEnabled;
+      setAutoRefreshButtonState();
+      persistAutoRefreshEnabled();
+      startAutoRefreshLoop();
+      setStatus(autoRefreshEnabled ? "Auto-refresh enabled (60s)." : "Auto-refresh disabled.");
     });
 
     themeBtn.addEventListener("click", async () => {
@@ -2316,14 +2964,36 @@
       await showTopRunsForCompare(DEFAULT_VISIBLE_COMPARE_RUNS);
     });
 
-    window.addEventListener("resize", () => {
-      activePlotNodes.forEach((node) => Plotly.Plots.resize(node));
+    plotModalCloseBtn.addEventListener("click", () => {
+      closeExpandedMetricPlot();
     });
 
+    plotModalEl.addEventListener("click", (event) => {
+      if (event.target === plotModalEl) {
+        closeExpandedMetricPlot();
+      }
+    });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !plotModalEl.hidden) {
+        closeExpandedMetricPlot();
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      activePlotNodes.forEach((node) => Plotly.Plots.resize(node));
+      if (!plotModalEl.hidden) {
+        Plotly.Plots.resize(plotModalSurfaceEl);
+      }
+    });
+
+    autoRefreshEnabled = readStoredAutoRefreshEnabled();
+    setAutoRefreshButtonState();
     applyTheme(readStoredTheme());
     loadStoredGroupRegexFilterSettings();
     updateMetricPager();
     renderCompareToolbar();
+    startAutoRefreshLoop();
     loadConfig();
   </script>
 </body>

@@ -13,6 +13,13 @@ uv run python app.py
 
 Open `http://127.0.0.1:8000`.
 
+## Run With Docker
+
+```bash
+docker build -t lattice .
+docker run --rm -p 8000:8000 -e FLASK_SECRET_KEY=change-me lattice
+```
+
 ## Screenshots
 
 Light mode
